@@ -169,3 +169,73 @@ function downloadTxt(){
 
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Đăng nhập Tool</title>
+</head>
+
+<body>
+  <h2>Đăng nhập để vào web</h2>
+
+  <input type="email" id="email" placeholder="Email"><br><br>
+  <input type="password" id="password" placeholder="Mật khẩu"><br><br>
+
+  <button onclick="login()">Đăng nhập</button>
+
+  <p id="status"></p>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
+
+  <script>
+    // ====== FIREBASE CONFIG (THAY CHỖ NÀY) ======
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    // ====== LOGIN ======
+    function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      auth.signInWithEmailAndPassword(email, password)
+        .then(user => {
+          document.getElementById("status").innerText = "Đăng nhập thành công!";
+
+          sendNotify(email);
+
+          // chuyển sang trang chính của tool
+          setTimeout(() => {
+            window.location.href = "tool.html";
+          }, 1000);
+        })
+        .catch(err => {
+          document.getElementById("status").innerText = err.message;
+        });
+    }
+
+    // ====== GỬI THÔNG BÁO TELEGRAM ======
+    function sendNotify(userEmail) {
+      fetch("https://api.telegram.org/botYOUR_BOT_TOKEN/sendMessage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          chat_id: "YOUR_CHAT_ID",
+          text: "🔔 Có người đăng nhập: " + userEmail
+        })
+      });
+    }
+  </script>
+
+</body>
+</html>
