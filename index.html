@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Xử lý văn bản</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:1000px;margin:20px auto;padding:20px}
+textarea{width:100%;height:220px;margin:10px 0;font-size:16px}
+button{padding:10px 18px;margin:5px}
+.option{margin:10px 0}
+</style>
+</head>
+<body>
+
+<h2>Xử lý văn bản</h2>
+
+<textarea id="input" placeholder="Dán văn bản vào đây"></textarea>
+
+<div class="option">
+<label>Phần trăm chèn ký tự ẩn:</label>
+<input type="number" id="hiddenRate" value="50" min="0" max="100"> %
+</div>
+
+<button onclick="processText()">Xử lý</button>
+<button onclick="clearAll()">Xóa văn bản</button>
+<button onclick="copyResult()">Copy văn bản</button>
+<button onclick="downloadTxt()">Xuất TXT</button>
+
+<textarea id="output" placeholder="Kết quả sẽ hiện ở đây"></textarea>
+
+<div id="stats" class="option"></div>
+<div class="option"><strong>2026 Cre by Nobita Sam - Tel: 09621.86.995</strong></div>
+
+<script>
+// Chỉ dùng 3 ký tự ẩn theo yêu cầu: U+200C, U+2060, U+200B
+const INVISIBLE=['\u200C','\u2060','\u200B'];
+
+// Các cụm chữ ưu tiên: nếu từ có cụm này thì chèn ngay sau cụm đó
+const PRIORITY_CLUSTERS=['ngh','ch','tr','th','nh','ph','kh','ng'];
+
+function randomInvisible(){
+  return INVISIBLE[Math.floor(Math.random()*INVISIBLE.length)];
+}
+
+function makeHiddenChars(){
+  const count=Math.random()<0.5 ? 1 : 2; // mỗi từ được chọn chèn 1-2 ký tự ẩn
+  let s='';
+  for(let i=0;i<count;i++) s+=randomInvisible();
+  return s;
+}
+
+// Chỉ giữ chức năng đổi s <-> x, bỏ hoàn toàn tr <-> ch
+function swapPairs(text){
+  text=text.replace(/s/g,'__TMP_S__');
+  text=text.replace(/x/g,'s');
+  text=text.replace(/__TMP_S__/g,'x');
+  return text;
+}
+
+function isWordToken(token){
+  return /[a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(token);
+}
+
+function cleanLength(token){
+  const letters=token.match(/[a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/gi);
+  return letters ? letters.length : 0;
+}
+
+function findInsertPosition(word){
+  const lower=word.toLowerCase();
+
+  // Từ bắt đầu bằng "ngh" thì chèn sau "ngh"
+  if(lower.startsWith('ngh')) return 3;
+
+  // Nếu từ bắt đầu bằng ch, tr, th, ph, kh, nh, ng thì chèn sau cụm đó
+  for(const cluster of PRIORITY_CLUSTERS){
+    if(cluster==='ngh') continue;
+    if(lower.startsWith(cluster)) return cluster.length;
+  }
+
+  // Vị trí mặc định: sau ký tự thứ 2 của từ
+  return Math.min(2, word.length);
+}
+
+function insertHidden(word){
+  const pos=findInsertPosition(word);
+  return word.slice(0,pos)+makeHiddenChars()+word.slice(pos);
+}
+
+function processText(){
+  let text=document.getElementById('input').value;
+
+  if(!text.trim()){
+    alert('Vui lòng nhập văn bản');
+    return;
+  }
+
+  text=text.toLowerCase();
+  text=swapPairs(text);
+  text=text.replace(/([.,;:?!])/g,'$1\n');
+
+  let rate=parseInt(document.getElementById('hiddenRate').value);
+  if(isNaN(rate)) rate=50;
+  rate=Math.max(0,Math.min(100,rate));
+
+  const parts=text.split(/(\s+)/);
+
+  // Từ hợp lệ: không phải khoảng trắng, có chữ, độ dài sau khi bỏ dấu câu >= 2
+  const eligibleIndexes=[];
+  parts.forEach((part,index)=>{
+    if(/^\s+$/.test(part)) return;
+    if(!isWordToken(part)) return;
+    if(cleanLength(part)<2) return;
+    eligibleIndexes.push(index);
+  });
+
+  // Tính tỷ lệ (%) trên tổng số từ hợp lệ
+  const targetCount=Math.floor(eligibleIndexes.length*rate/100);
+
+  // Chọn ngẫu nhiên đúng số lượng từ cần chèn
+  for(let i=eligibleIndexes.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [eligibleIndexes[i],eligibleIndexes[j]]=[eligibleIndexes[j],eligibleIndexes[i]];
+  }
+
+  const selected=new Set(eligibleIndexes.slice(0,targetCount));
+
+  const output=parts.map((part,index)=>{
+    if(!selected.has(index)) return part;
+    return insertHidden(part);
+  }).join('');
+
+  document.getElementById('output').value=output;
+
+  const actualRate=eligibleIndexes.length>0
+    ? ((targetCount/eligibleIndexes.length)*100).toFixed(1)
+    : '0.0';
+
+  document.getElementById('stats').innerHTML=
+    'Từ hợp lệ: '+eligibleIndexes.length+
+    ' | Đã chèn: '+targetCount+
+    ' | Tỷ lệ thực tế: '+actualRate+'%';
+}
+
+function clearAll(){
+  document.getElementById('input').value='';
+  document.getElementById('output').value='';
+  document.getElementById('stats').innerHTML='';
+  document.getElementById('input').focus();
+}
+
+function copyResult(){
+  navigator.clipboard.writeText(document.getElementById('output').value);
+  alert('Đã copy văn bản');
+}
+
+function downloadTxt(){
+  const blob=new Blob(
+    [document.getElementById('output').value],
+    {type:'text/plain;charset=utf-8'}
+  );
+
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='ketqua.txt';
+  a.click();
+}
+</script>
+
+</body>
+</html>
