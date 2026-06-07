@@ -249,3 +249,124 @@ auth.onAuthStateChanged(user => {
 
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Secure Tool</title>
+
+  <style>
+    body { font-family: Arial; }
+
+    /* ẨN TOÀN BỘ TOOL MẶC ĐỊNH */
+    #app { display: none; }
+    #loading {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- 🔄 LOADING -->
+<div id="loading">
+  <h2>🔐 Đang xác thực...</h2>
+</div>
+
+<!-- 🔴 LOGIN UI -->
+<div id="loginBox" style="display:none;">
+  <h2>Yêu cầu đăng nhập</h2>
+
+  <input type="email" id="email" placeholder="Email"><br><br>
+  <input type="password" id="password" placeholder="Password"><br><br>
+
+  <button onclick="login()">Đăng nhập</button>
+
+  <p id="msg"></p>
+</div>
+
+<!-- 🟢 APP (TOOL) -->
+<div id="app">
+  <h1>🔧 TOOL BẢO MẬT CAO</h1>
+
+  <p id="user"></p>
+
+  <button onclick="runTool()">Chạy tool</button>
+  <button onclick="logout()">Đăng xuất</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+const loading = document.getElementById("loading");
+const loginBox = document.getElementById("loginBox");
+const app = document.getElementById("app");
+
+// 🔥 CHẶN TOÀN BỘ UI TRƯỚC KHI CHECK AUTH
+function showLogin() {
+  loading.style.display = "none";
+  loginBox.style.display = "block";
+  app.style.display = "none";
+}
+
+function showApp(user) {
+  loading.style.display = "none";
+  loginBox.style.display = "none";
+  app.style.display = "block";
+
+  document.getElementById("user").innerText =
+    "Xin chào: " + user.email;
+}
+
+// 🔥 CHECK AUTH REAL-TIME (QUAN TRỌNG NHẤT)
+auth.onAuthStateChanged(async (user) => {
+  if (!user) {
+    showLogin();
+    return;
+  }
+
+  try {
+    // 🔐 FORCE CHECK TOKEN (chống fake session)
+    await user.getIdToken(true);
+
+    showApp(user);
+
+  } catch (e) {
+    showLogin();
+  }
+});
+
+// 🔐 LOGIN
+function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  auth.signInWithEmailAndPassword(email, password)
+    .catch(err => {
+      document.getElementById("msg").innerText = err.message;
+    });
+}
+
+// 🚪 LOGOUT
+function logout() {
+  auth.signOut();
+}
+
+// 🔧 TOOL FUNCTION
+function runTool() {
+  alert("Tool đang chạy...");
+}
+</script>
+
+</body>
+</html>
